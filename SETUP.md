@@ -1,6 +1,7 @@
-# Sangamam 2026 Certificate Builder – Setup Guide
+# Sangamam26 Certificate Studio – Setup Guide (Volunteers + Delegates)
 
 Files in this folder
+- `delegate-certificate-preview.png` – sample of the delegate certificate
 - `index.html` – the member-facing web app (single file; certificate artwork from your PDF is embedded)
 - `Code.gs` – Google Apps Script backend (member lookup, audit log, executive dashboard)
 
@@ -9,10 +10,11 @@ Files in this folder
 1. Create a new Google Sheet, e.g. **Sangamam26 Certificate App**.
 2. Open **Extensions → Apps Script**. Delete the sample code and paste the full contents of `Code.gs`. Save.
 3. In the function dropdown choose **setup** and click **Run**, then run **installBackupTrigger** once (daily Drive backup) and **securityCheck** (confirms your sheet is not shared by link). Approve the permissions when asked (Google shows an "unverified app" warning for your own script: Advanced → Go to project).
-   This creates three sheets:
-   - **Members** (Full Name | Email ID | PMI ID) – paste or import your member list here from row 2. You can keep editing it any time.
-   - **AuditLog** – one row per event (lookups, certificates, downloads, shares).
-   - **Dashboard** – KPI cards, daily trend, event mix, share channels, top designations, recent failed lookups.
+   This creates four sheets:
+   - **Volunteers** (Full Name | Email ID | PMI ID) – your volunteer list, from row 2. If you used the earlier version, your old **Members** sheet is renamed to Volunteers automatically.
+   - **Delegates** (Full Name | Email ID | PMI ID) – your delegate list, same columns.
+   - **AuditLog** – one row per event (lookups, certificates, downloads, emails, shares) with a Certificate Type column.
+   - **Dashboard** – KPIs for volunteers and delegates, adoption by type, daily trend, activity and share charts.
 4. **Deploy → New deployment → type: Web app**
    - Execute as: **Me**
    - Who has access: **Anyone**
@@ -37,24 +39,34 @@ Pick one:
 
 ## How it works for members
 
-1. Member enters their **email ID or PMI ID**. The script checks the Members sheet (email is case-insensitive; PMI ID is compared by digits only).
-2. If found: name and email are pre-filled. Member confirms or edits **Full name**, **Email ID**, optional **Designation** and **Phone**, and adds a **photo** (zoom, drag, left/right and up/down sliders).
-3. The certificate is drawn on screen. Member can **Download**, **Share** (native sheet on mobile, which includes WhatsApp, Instagram and LinkedIn), or use the WhatsApp / LinkedIn / Instagram buttons.
+1. Member enters their **email ID or PMI ID**. The script checks both the **Volunteers** and **Delegates** sheets (email is case-insensitive; PMI ID is compared by digits only).
+2. **Found in both** → the member is asked which certificate they want (Volunteer or Delegate) and can create the other one afterwards with one click. **Found in one** → that certificate flow starts directly. **Not found** → a friendly message.
+3. Name is pre-filled from the sheet. The member confirms or edits **Full name**, **Email ID**, optional **Designation** and **Phone**, and adds a **photo** (required for volunteers, optional for delegates) with zoom and move controls, then ticks the privacy confirmation.
+4. The certificate is drawn on screen. Member can **Download**, **Email me**, **Share** (native sheet on mobile, includes WhatsApp, Instagram and LinkedIn), or use the WhatsApp / LinkedIn / Instagram buttons.
+
+**Email me** sends the certificate only to the email address stored in your sheet for that person, never to an address typed on the page, and shows it masked (for example `de***@gmail.com`). Each verified person can send up to 3 emails. If a person has no email in your sheet, the button is hidden. Gmail accounts can send about 100 emails a day through Apps Script, and Google Workspace accounts about 1,500, so for a very large event use a Workspace account or ask delegates to download instead. You can change the subject and sender name in the `MAIL` block of `Code.gs`.
+
+## Certificate templates
+
+- **Volunteer:** Certificate of Appreciation (your original wording), photo required.
+- **Delegate:** Certificate of Participation with a cyan "DELEGATE" tag, the wording "has participated as a Delegate in Sangamam 2026 – The New Art of Delivery, organised by PMI Chennai Chapter on 14 November 2026 at Hilton Chennai", a highlighted line "Eligible to claim 7 PDUs (Professional Development Units)", the same signatories, and an optional photo. Change the PDU wording in the `highlight` setting of the delegate type in `index.html`.
+Wording, positions and share text for each type are in the `TYPES` block near the top of the script in `index.html`.
 
 ## What is logged (AuditLog columns)
 
-Timestamp, Date, Event, Input Type, Input (masked), Matched, Member Name (sheet), Full Name (entered), Designation, Email, PMI ID, Phone, Device, Session ID.
+Timestamp, Date, Event, Input Type, Input (masked), Matched, Member Name (sheet), Full Name (entered), Designation, Email, PMI ID, Phone, Device, Session ID, Certificate Type.
 
-Events: `LOOKUP_OK`, `LOOKUP_FAIL`, `CERT_GENERATED`, `DOWNLOAD`, `SHARE_NATIVE`, `SHARE_WHATSAPP`, `SHARE_LINKEDIN`, `SHARE_INSTAGRAM`.
+Events: `LOOKUP_OK`, `LOOKUP_FAIL`, `CERT_GENERATED`, `DOWNLOAD`, `SHARE_NATIVE`, `SHARE_WHATSAPP`, `SHARE_LINKEDIN`, `SHARE_INSTAGRAM`, `EMAIL_CERT`.
 
 ## Dashboard metrics
 
-Registered members · verification attempts · success rate · certificates generated · unique members certified · adoption % · downloads · shares · certificates today · failed lookups today · mobile share · average certificates per member. Charts: certificates per day, activity by event, shares by channel. Open **Certificate App → Rebuild dashboard** (menu) if you ever delete or change it.
+Registered volunteers and delegates · verification attempts and success rate · certificates generated (total, volunteer, delegate) · unique people certified · downloads · shares · certificates emailed · mobile share. Tables and charts: certificates per day by type, activity by event, shares by channel, adoption by type (registered vs certified), top designations, recent failed lookups. Open **Certificate App → Rebuild dashboard** if you ever change or delete it.
 
 ## Security features
 
 Built into the app
-- **Your member list is never exposed.** The web app only answers one lookup at a time and returns the member's name, never emails, PMI IDs or phone numbers.
+- **Your lists are never exposed.** The web app answers one lookup at a time and returns only the person's name and a masked email (for the Email me button), never full emails, PMI IDs or phone numbers.
+- **Emails go only to your sheet's address**, with a per-person limit, a JPEG size/type check and a daily quota check.
 - **Rate limits.** Per visitor session: 20 lookups per 10 minutes, and a 5-minute lock after 6 failed lookups. Globally: 400 lookups and 80 failed lookups per minute, which stops ID-guessing scripts. Tune these in the `LIMITS` block at the top of `Code.gs`.
 - **No forged log rows.** Every audit event needs a one-time token issued only after a successful lookup (valid 6 hours, max 40 events). Calls without a valid token are ignored.
 - **Formula-injection protection.** Everything written to AuditLog is length-limited, stripped of control characters and neutralised if it starts with `=`, `+`, `-` or `@`, so nobody can plant spreadsheet formulas in your sheet.
